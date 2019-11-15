@@ -216,12 +216,14 @@ class Monitor(object):
         h5['performance_data'].flush()  # notify the reader
         self.reset()
 
-    def taskfilename(self):
+    def taskfilename(self, taskno):
         """
         :return: a filename for the task, like $HOME/oqdata/calc_42/123
         """
-        if self.calc_dir and self.calc_id:
-            return os.path.join(self.calc_dir, str(self.calc_id))
+        if self.calc_dir:
+            if not os.path.exists(self.calc_dir):
+                os.mkdir(self.calc_dir)
+            return os.path.join(self.calc_dir, str(taskno))
 
     # TODO: rename this as spawn; see what will break
     def __call__(self, operation='no operation', **kw):

@@ -412,10 +412,11 @@ def safely_call(func, args, task_no=0, mon=dummy_mon):
         assert not isgenfunc, func
         return Result.new(func, args, mon)
 
-    fname = mon.taskfilename()
+    fname = mon.taskfilename(task_no)
     if fname:
         # this is used to see which tasks are currently running
         open(fname, 'w').close()  # touch a file
+
     mon = mon.new(operation='total ' + func.__name__, measuremem=True)
     mon.weight = getattr(args[0], 'weight', 1.)  # used in task_info
     mon.task_no = task_no
@@ -678,18 +679,7 @@ class Starmap(object):
                  progress=logging.info, h5=None, num_cores=None):
         self.__class__.init(distribute=distribute)
         self.task_func = task_func
-        if h5:
-            match = re.search(r'(\d+)', os.path.basename(h5.filename))
-            self.calc_id = int(match.group(1))
-            self.calc_dir = os.path.dirname(h5.filename)
-        else:
-            self.calc_id = None
-            self.calc_dir = None
-            h5 = hdf5.File(gettemp(suffix='.hdf5'), 'w')
-            init_performance(h5)
         self.monitor = Monitor(task_func.__name__)
-        self.monitor.calc_id = self.calc_id
-        self.monitor.calc_dir = self.calc_dir
         self.name = self.monitor.operation or task_func.__name__
         self.task_args = task_args
         self.progress = progress
@@ -713,6 +703,24 @@ class Starmap(object):
             err = workerpool.check_status()
             if err:
                 raise RuntimeError(err)
+
+    def presubmit(self, monitor):
+        """
+        Attach some attributes to the monitor before submitting the tasks
+        """
+        if self.h5:
+            match = re.search(r'(\d+)', os.path.basename(self.h5.filename))
+            self.calc_id = int(match.group(1))
+            self.calc_dir = os.path.join(
+                os.path.dirname(self.h5.filename), 'calc_' + match.group(1))
+        else:
+            self.calc_id = None
+            self.calc_dir = None
+            self.h5 = hdf5.File(gettemp(suffix='.hdf5'), 'w')
+            init_performance(self.h5)
+
+        monitor.calc_id = self.calc_id
+        monitor.calc_dir = self.calc_dir
 
     def log_percent(self):
         """
@@ -742,6 +750,7 @@ class Starmap(object):
         monitor = monitor or self.monitor
         func = func or self.task_func
         if not hasattr(self, 'socket'):  # first time
+            self.presubmit(monitor)
             self.__class__.running_tasks = self.tasks
             self.socket = Socket(self.receiver, zmq.PULL, 'bind').__enter__()
             monitor.backurl = 'tcp://%s:%s' % (

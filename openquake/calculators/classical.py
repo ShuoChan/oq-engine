@@ -28,7 +28,7 @@ from openquake.baselib.general import AccumDict, block_splitter
 from openquake.hazardlib import mfd
 from openquake.hazardlib.contexts import (
     ContextMaker, Effect, get_effect, ruptures_by_mag_dist)
-from openquake.hazardlib.calc.filters import split_sources, getdefault
+from openquake.hazardlib.calc.filters import split_sources
 from openquake.hazardlib.calc.hazard_curve import classical
 from openquake.hazardlib.probability_map import ProbabilityMap
 from openquake.commonlib import calc, util
