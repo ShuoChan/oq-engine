@@ -107,6 +107,7 @@ class Monitor(object):
     address = None
     authkey = None
     calc_id = None
+    calc_dir = None
 
     def __init__(self, operation='', measuremem=False, inner_loop=False,
                  h5=None):
@@ -214,6 +215,13 @@ class Monitor(object):
         hdf5.extend(h5['performance_data'], data)
         h5['performance_data'].flush()  # notify the reader
         self.reset()
+
+    def taskfilename(self):
+        """
+        :return: a filename for the task, like $HOME/oqdata/calc_42/123
+        """
+        if self.calc_dir and self.calc_id:
+            return os.path.join(self.calc_dir, str(self.calc_id))
 
     # TODO: rename this as spawn; see what will break
     def __call__(self, operation='no operation', **kw):

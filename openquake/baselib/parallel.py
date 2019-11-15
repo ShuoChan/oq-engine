@@ -412,6 +412,10 @@ def safely_call(func, args, task_no=0, mon=dummy_mon):
         assert not isgenfunc, func
         return Result.new(func, args, mon)
 
+    fname = mon.taskfilename()
+    if fname:
+        # this is used to see which tasks are currently running
+        open(fname, 'w').close()  # touch a file
     mon = mon.new(operation='total ' + func.__name__, measuremem=True)
     mon.weight = getattr(args[0], 'weight', 1.)  # used in task_info
     mon.task_no = task_no
@@ -442,6 +446,8 @@ def safely_call(func, args, task_no=0, mon=dummy_mon):
             mon.children.clear()
             if res.msg == 'TASK_ENDED':
                 break
+    if fname:
+        os.remove(fname)  # remove the file
 
 
 if oq_distribute().startswith('celery'):
@@ -675,12 +681,15 @@ class Starmap(object):
         if h5:
             match = re.search(r'(\d+)', os.path.basename(h5.filename))
             self.calc_id = int(match.group(1))
+            self.calc_dir = os.path.dirname(h5.filename)
         else:
             self.calc_id = None
+            self.calc_dir = None
             h5 = hdf5.File(gettemp(suffix='.hdf5'), 'w')
             init_performance(h5)
         self.monitor = Monitor(task_func.__name__)
         self.monitor.calc_id = self.calc_id
+        self.monitor.calc_dir = self.calc_dir
         self.name = self.monitor.operation or task_func.__name__
         self.task_args = task_args
         self.progress = progress

@@ -184,10 +184,8 @@ def worker(sock, executing):
     setproctitle('oq-zworker')
     with sock:
         for cmd, args, taskno, mon in sock:
-            fname = os.path.join(executing, str(taskno))
-            open(fname, 'w').close()
+            mon.calc_dir = executing
             parallel.safely_call(cmd, args, taskno, mon)
-            os.remove(fname)
 
 
 class WorkerPool(object):
