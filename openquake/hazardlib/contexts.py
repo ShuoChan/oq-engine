@@ -431,6 +431,36 @@ class PmapMaker(object):
                         poes[:, ll(imt), g] = 0
             return r_sites.sids, poes
 
+    def make2(self):
+        totrups, numrups, nsites = 0, 0, 0
+        L, G = len(self.imtls.array), len(self.gsims)
+        poemap = ProbabilityMap(L, G)
+        for mag, rups in self.mag_rups:
+            for site in self.s_sites:
+                sid = site.id
+                with self.ctx_mon:
+                    rctx, dctx = self.cmaker.make_ctxs_rd(rups, site)
+                    numrups += len(dctx.rrup)
+                with self.gmf_mon:
+                    mean_std = base.get_mean_std(  # shape (2, N, M, G)
+                        site, rctx, dctx, self.imts, self.gsims)
+                with self.pne_mon:
+                    poes = base.get_poes(mean_std, self.loglevels,
+                                         self.trunclevel, self.gsims)
+                    [pne] = rctx.get_probability_no_exceedance(poes)
+                    if self.rup_indep:
+                        poemap.setdefault(sid, self.rup_indep).array *= pne
+                    else:
+                        poemap.setdefault(sid, self.rup_indep).array += (
+                            1.-pne) * rctx.weight
+                    nsites += 1
+        poemap.totrups = totrups
+        poemap.numrups = numrups
+        poemap.nsites = nsites
+        poemap.maxdist = None
+        poemap.data = self.rupdata.data
+        return poemap
+
     def make(self):
         """
         :param src: a hazardlib source
